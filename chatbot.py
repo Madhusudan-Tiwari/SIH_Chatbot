@@ -88,8 +88,8 @@ def get_answer(user_input, qa_list, conf_thresh=CONFIDENCE_THRESHOLD):
     return {"answer": answer_translated, "score": best["score"], "matches": matches, "src_lang": src_lang, "query_en": query_en}
 
 # ------------------- Streamlit UI -------------------
-st.set_page_config(page_title="RTU FAQ Chatbot", page_icon="🎓", layout="centered")
-st.title("RTU FAQ Chatbot")
+st.set_page_config(page_title="FAQ Chatbot", page_icon="🎓", layout="centered")
+st.title("FAQ Chatbot")
 st.caption("Ask questions about admissions / reporting. (Uses fuzzy matching against the extracted FAQ JSON)")
 
 # Load FAQs
