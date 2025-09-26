@@ -88,9 +88,18 @@ def get_answer(user_input, qa_list, conf_thresh=CONFIDENCE_THRESHOLD):
     return {"answer": answer_translated, "score": best["score"], "matches": matches, "src_lang": src_lang, "query_en": query_en}
 
 # ------------------- Streamlit UI -------------------
+# ------------------- Streamlit UI -------------------
 st.set_page_config(page_title="FAQ Chatbot", page_icon="🎓", layout="centered")
-st.title("FAQ Chatbot")
-st.caption("Ask questions about admissions / reporting. (Uses fuzzy matching against the extracted FAQ JSON)")
+
+st.title("🎓 FAQ Chatbot (Prototype)")
+st.markdown(
+    """
+    > This is a **prototype chatbot** that uses fuzzy matching on an FAQ dataset.  
+    > It **does not use LLMs** currently — answers are chosen based on similarity scores.  
+    > ✅ Supports **English, Hindi, and Punjabi** (via auto-detection + translation).  
+    > 🔮 *Future versions will integrate LLM + vector search for smarter conversations.*
+    """
+)
 
 # Load FAQs
 try:
@@ -99,46 +108,53 @@ except Exception as e:
     st.error(f"Could not load FAQs: {e}")
     st.stop()
 
-st.sidebar.markdown("### App options")
+st.sidebar.markdown("### ⚙️ Options")
 show_raw = st.sidebar.checkbox("Show raw matching candidates", value=False)
 top_k = st.sidebar.slider("Top-k candidates to show", min_value=1, max_value=10, value=5)
 CONFIDENCE_THRESHOLD = st.sidebar.slider("Confidence threshold (%)", min_value=0, max_value=100, value=60)
 
 # Chat input
 with st.form("ask_form", clear_on_submit=False):
-    user_input = st.text_area("Your question", height=100, placeholder="E.g. Where do I report at RTU?")
+    user_input = st.text_area("💬 Your question:", height=100, placeholder="E.g. Where do I report at RTU?")
     submitted = st.form_submit_button("Ask")
 
 if submitted:
     if not user_input or not user_input.strip():
-        st.warning("Please type a question.")
+        st.warning("⚠️ Please type a question.")
     else:
-        with st.spinner("Finding an answer..."):
+        with st.spinner("🔎 Finding an answer..."):
             result = get_answer(user_input.strip(), faqs, conf_thresh=CONFIDENCE_THRESHOLD)
         if result["answer"]:
-            st.success(result["answer"])
-            st.write(f"**Match confidence:** {result['score']}%")
+            st.success(f"✅ {result['answer']}")
+            st.progress(result["score"] / 100)
+            st.caption(f"Confidence: **{result['score']}%**")
+            
             if show_raw:
-                st.write("---")
-                st.write("Top matching FAQ candidates (English-translated query used for matching):")
+                st.write("### 🔍 Matching Candidates")
                 st.write(f"**Translated query →** {result.get('query_en','')}")
                 for i, m in enumerate(result["matches"][:top_k], start=1):
-                    st.write(f"{i}. **Q:** {m['question']}")
-                    st.write(f"   - Score: {m['score']}%")
-                    st.write(f"   - A: {m['answer']}")
+                    st.info(f"{i}. **Q:** {m['question']}  \n➡️ **A:** {m['answer']}  \n📊 Score: {m['score']}%")
         else:
-            st.error("Sorry — I couldn't find a confident match in the FAQ.")
-            st.write(f"Best match confidence: {result['score']}%")
+            st.error("❌ Sorry — I couldn't find a confident match in the FAQ.")
+            st.caption(f"Best match confidence: {result['score']}%")
             if result.get("matches"):
-                st.write("Here are the top candidates I found — maybe one of these helps:")
+                st.write("Here are the closest matches I found:")
                 for i, m in enumerate(result["matches"][:top_k], start=1):
-                    st.write(f"{i}. **Q:** {m['question']}  —  **score:** {m['score']}%")
-                    st.write(f"   A: {m['answer']}")
-            st.write("If none apply, try rephrasing your question or contact admissions at udadmissions@rtu.ac.in")
+                    st.warning(f"{i}. **Q:** {m['question']}  \n➡️ **A:** {m['answer']}  \n📊 Score: {m['score']}%")
+            st.write("📩 If none apply, try rephrasing or contact admissions at **udadmissions@rtu.ac.in**")
 
-# Optional: show entire FAQ list for inspection (collapsible)
-with st.expander("Show full FAQ list"):
+# Optional: show entire FAQ list
+with st.expander("📖 Show full FAQ list"):
     for item in faqs:
-        st.markdown(f"**{item['question']}**")
-        st.write(item['answer'])
+        st.markdown(f"**❓ {item['question']}**")
+        st.write(f"➡️ {item['answer']}")
         st.write("---")
+
+# Footer disclaimer
+st.markdown(
+    """
+    ---
+    ⚠️ *Disclaimer:* This chatbot is a **prototype** and currently uses fuzzy string matching, not an LLM.  
+    Answers are selected from pre-loaded FAQs.  
+    """
+)
