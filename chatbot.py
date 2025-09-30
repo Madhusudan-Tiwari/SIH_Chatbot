@@ -113,6 +113,71 @@ show_raw = st.sidebar.checkbox("Show raw matching candidates", value=False)
 top_k = st.sidebar.slider("Top-k candidates to show", min_value=1, max_value=10, value=5)
 CONFIDENCE_THRESHOLD = st.sidebar.slider("Confidence threshold (%)", min_value=0, max_value=100, value=60)
 
+
+# ------------------- Streamlit UI -------------------
+st.set_page_config(page_title="FAQ Chatbot", page_icon="🎓", layout="centered")
+
+st.title("🎓 FAQ Chatbot (Prototype)")
+
+st.markdown(
+    """
+    > This is a **prototype chatbot** that uses fuzzy matching on an FAQ dataset.  
+    > It **does not use LLMs** currently — answers are chosen based on similarity scores.  
+    > ✅ Supports **English, Hindi, and Punjabi** (via auto-detection + translation).  
+    > 🔮 *Future versions will integrate LLM + vector search for smarter conversations.*  
+    """
+)
+
+# Load FAQs
+try:
+    faqs = load_faqs(JSON_PATH)
+except Exception as e:
+    st.error(f"Could not load FAQs: {e}")
+    st.stop()
+
+# --- Initialize history ---
+if "history" not in st.session_state:
+    st.session_state["history"] = []
+
+st.sidebar.markdown("### ⚙️ Options")
+show_raw = st.sidebar.checkbox("Show raw matching candidates", value=False)
+top_k = st.sidebar.slider("Top-k candidates to show", min_value=1, max_value=10, value=5)
+CONFIDENCE_THRESHOLD = st.sidebar.slider("Confidence threshold (%)", min_value=0, max_value=100, value=60)
+
+# --- Show history above input ---
+st.subheader("💬 Conversation History")
+if st.session_state["history"]:
+    for i, (q, a) in enumerate(st.session_state["history"], 1):
+        st.markdown(f"**You:** {q}")
+        st.markdown(f"**Bot:** {a}")
+        st.write("---")
+else:
+    st.caption("No conversation yet — ask your first question below 👇")
+
+# --- Chat input ---
+with st.form("ask_form", clear_on_submit=False):
+    user_input = st.text_area("Your question:", height=100, placeholder="E.g. Where do I report at RTU?")
+    submitted = st.form_submit_button("Ask")
+
+if submitted:
+    if not user_input.strip():
+        st.warning("⚠️ Please type a question.")
+    else:
+        with st.spinner("🔎 Finding an answer..."):
+            result = get_answer(user_input.strip(), faqs, conf_thresh=CONFIDENCE_THRESHOLD)
+
+        if result["answer"]:
+            bot_reply = f"✅ {result['answer']} (Confidence: {result['score']}%)"
+        else:
+            bot_reply = f"❌ Sorry — no confident match (best score {result['score']}%)."
+
+        # --- Save to history ---
+        st.session_state["history"].append((user_input.strip(), bot_reply))
+
+        # --- Force rerun to refresh history display ---
+        st.rerun()
+
+
 # Chat input
 with st.form("ask_form", clear_on_submit=False):
     user_input = st.text_area("💬 Your question:", height=100, placeholder="E.g. Where do I report at RTU?")
